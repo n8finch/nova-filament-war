@@ -1,0 +1,21 @@
+{
+    "name": "n8finch/nova-filament-war",
+    "description": "War Card Game - A pure JavaScript implementation with no dependencies",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Nate Finch",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
