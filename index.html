@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>War Card Game</title>
+    <title>Nove Filament War</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -217,8 +217,8 @@
 <body>
     <div class="container">
         <div class="game-title">
-            <h1>War Card Game</h1>
-            <p>A pure JavaScript implementation with no dependencies</p>
+            <h1>🏆Nove vs Filament War💪</h1>
+            <p>You're Nova, playing against Filament.<br/>Capture Filaments deck or all trump cards to win!/<br/><a href="#instructions">See rules below...</a></p>
         </div>
         
         <div class="game-board">
@@ -254,7 +254,7 @@
         
         <button id="new-game-btn" class="new-game-btn">New Game</button>
         
-        <div class="instructions">
+        <div class="instructions" id="instructions">
             <h2>How to Play</h2>
             <p>1. Press the SPACE BAR to flip cards.</p>
             <p>2. Higher card wins the round and takes both cards.</p>
@@ -747,22 +747,30 @@
             function checkGameEnd() {
                 // Win by depleting opponent's deck
                 if (playerCards.length === 0) {
-                    gameStatus.textContent = 'Game Over! Filament wins 🏆 by depleting Nova\'s deck!';
+                    const message = 'Game Over! Filament wins 🏆 by depleting Nova\'s deck!';
+                    gameStatus.textContent = message;
+                    alert(message);
                     isGameActive = false;
                     return;
                 } else if (computerCards.length === 0) {
-                    gameStatus.textContent = 'Game Over! Nova wins 🏆 by depleting Filament\'s deck!';
+                    const message = 'Game Over! Nova wins 🏆 by depleting Filament\'s deck!';
+                    gameStatus.textContent = message;
+                    alert(message);
                     isGameActive = false;
                     return;
                 }
                 
                 // Win by capturing all trump cards (3 cards)
                 if (playerTrumpCaptured === 3) {
-                    gameStatus.textContent = 'Game Over! Nova wins 🏆 by capturing all Filament trump cards!';
+                    const message = 'Game Over! Nova wins 🏆 by capturing all Filament trump cards!';
+                    gameStatus.textContent = message;
+                    alert(message);
                     isGameActive = false;
                     return;
                 } else if (computerTrumpCaptured === 3) {
-                    gameStatus.textContent = 'Game Over! Filament wins 🏆 by capturing all Nova trump cards!';
+                    const message = 'Game Over! Filament wins 🏆 by capturing all Nova trump cards!';
+                    gameStatus.textContent = message;
+                    alert(message);
                     isGameActive = false;
                     return;
                 }
