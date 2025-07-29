@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>War Card Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .game-title {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .game-board {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            background-color: #1a6c2f;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .player-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .computer-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .middle-area {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        .card-slot {
+            width: 120px;
+            height: 180px;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .card-back {
+            background-color: #b22222;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px);
+        }
+        .card-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        .card-value {
+            font-size: 40px;
+            font-weight: bold;
+        }
+        .card-suit {
+            font-size: 60px;
+            line-height: 1;
+        }
+        .hearts, .diamonds {
+            color: red;
+        }
+        .spades, .clubs {
+            color: black;
+        }
+        .deck {
+            width: 120px;
+            height: 180px;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            background-color: #b22222;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .deck::after {
+            content: attr(data-count);
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #fff;
+            color: #000;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .score-display {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            min-width: 100px;
+            text-align: center;
+        }
+        .game-status {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            margin: 10px 0;
+        }
+        .instructions {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .key-prompt {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffff00;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background-color: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        .timer {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+        }
+        .war-alert {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            display: none;
+        }
+        .new-game-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            align-self: center;
+        }
+        .new-game-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-title">
+            <h1>War Card Game</h1>
+            <p>A pure JavaScript implementation with no dependencies</p>
+        </div>
+        
+        <div class="game-board">
+            <div class="computer-area">
+                <div class="score-display">Computer: <span id="computer-score">0</span></div>
+                <div id="computer-deck" class="deck" data-count="26"></div>
+                <div id="computer-card" class="card-slot card-back"></div>
+            </div>
+            
+            <div class="middle-area">
+                <div id="war-alert" class="war-alert">WAR!</div>
+                <div id="key-prompt" class="key-prompt">Press: ?</div>
+                <div id="timer" class="timer">1</div>
+                <div id="game-status" class="game-status">Press SPACE to flip cards</div>
+            </div>
+            
+            <div class="player-area">
+                <div class="score-display">Player: <span id="player-score">0</span></div>
+                <div id="player-deck" class="deck" data-count="26"></div>
+                <div id="player-card" class="card-slot card-back"></div>
+            </div>
+        </div>
+        
+        <button id="new-game-btn" class="new-game-btn">New Game</button>
+        
+        <div class="instructions">
+            <h2>How to Play</h2>
+            <p>1. Press the SPACE BAR to flip cards.</p>
+            <p>2. Higher card wins the round and takes both cards.</p>
+            <p>3. If cards have the same value (WAR!), you'll need to press a random key (shown on screen) within 1 second to win.</p>
+            <p>4. The game ends when one player has all the cards.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game elements
+            const playerDeck = document.getElementById('player-deck');
+            const computerDeck = document.getElementById('computer-deck');
+            const playerCard = document.getElementById('player-card');
+            const computerCard = document.getElementById('computer-card');
+            const playerScore = document.getElementById('player-score');
+            const computerScore = document.getElementById('computer-score');
+            const gameStatus = document.getElementById('game-status');
+            const warAlert = document.getElementById('war-alert');
+            const keyPrompt = document.getElementById('key-prompt');
+            const timer = document.getElementById('timer');
+            const newGameBtn = document.getElementById('new-game-btn');
+            
+            // Game state variables
+            let deck = [];
+            let playerCards = [];
+            let computerCards = [];
+            let playerCurrentCard = null;
+            let computerCurrentCard = null;
+            let isGameActive = false;
+            let isWarScenario = false;
+            let expectedKey = '';
+            let timerInterval = null;
+            let timeLeft = 0;
+            let cardsInPlay = [];
+            
+            // Card values and suits
+            const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+            const suits = [
+                { name: 'hearts', symbol: '♥', class: 'hearts' },
+                { name: 'diamonds', symbol: '♦', class: 'diamonds' },
+                { name: 'clubs', symbol: '♣', class: 'clubs' },
+                { name: 'spades', symbol: '♠', class: 'spades' }
+            ];
+            
+            // Card value mapping for comparison
+            const cardValues = {
+                '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+                'J': 11, 'Q': 12, 'K': 13, 'A': 14
+            };
+            
+            // Initialize the game
+            function initGame() {
+                // Reset game state
+                deck = [];
+                playerCards = [];
+                computerCards = [];
+                playerCurrentCard = null;
+                computerCurrentCard = null;
+                isGameActive = true;
+                isWarScenario = false;
+                cardsInPlay = [];
+                
+                // Clear any existing timers
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+                
+                // Hide war elements
+                warAlert.style.display = 'none';
+                keyPrompt.style.display = 'none';
+                timer.style.display = 'none';
+                
+                // Reset card displays
+                playerCard.className = 'card-slot card-back';
+                computerCard.className = 'card-slot card-back';
+                playerCard.innerHTML = '';
+                computerCard.innerHTML = '';
+                
+                // Create and shuffle deck
+                createDeck();
+                shuffleDeck();
+                
+                // Deal cards
+                dealCards();
+                
+                // Update UI
+                updateDeckCounts();
+                updateScores();
+                gameStatus.textContent = 'Press SPACE to flip cards';
+            }
+            
+            // Create a standard deck of 52 cards
+            function createDeck() {
+                for (let suit of suits) {
+                    for (let value of values) {
+                        deck.push({
+                            value: value,
+                            suit: suit,
+                            numericValue: cardValues[value]
+                        });
+                    }
+                }
+            }
+            
+            // Shuffle the deck using Fisher-Yates algorithm
+            function shuffleDeck() {
+                for (let i = deck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [deck[i], deck[j]] = [deck[j], deck[i]];
+                }
+            }
+            
+            // Deal cards to players
+            function dealCards() {
+                for (let i = 0; i < deck.length; i++) {
+                    if (i % 2 === 0) {
+                        playerCards.push(deck[i]);
+                    } else {
+                        computerCards.push(deck[i]);
+                    }
+                }
+            }
+            
+            // Update deck counts in UI
+            function updateDeckCounts() {
+                playerDeck.setAttribute('data-count', playerCards.length);
+                computerDeck.setAttribute('data-count', computerCards.length);
+            }
+            
+            // Update scores in UI
+            function updateScores() {
+                playerScore.textContent = playerCards.length;
+                computerScore.textContent = computerCards.length;
+            }
+            
+            // Display a card in the UI
+            function displayCard(cardElement, card) {
+                cardElement.className = 'card-slot';
+                cardElement.innerHTML = `
+                    <div class="card-content">
+                        <div class="card-value ${card.suit.class}">${card.value}</div>
+                        <div class="card-suit ${card.suit.class}">${card.suit.symbol}</div>
+                    </div>
+                `;
+            }
+            
+            // Flip cards for both players
+            function flipCards() {
+                if (!isGameActive || isWarScenario || playerCards.length === 0 || computerCards.length === 0) {
+                    return;
+                }
+                
+                // Get top cards from each deck
+                playerCurrentCard = playerCards.shift();
+                computerCurrentCard = computerCards.shift();
+                
+                // Add to cards in play
+                cardsInPlay.push(playerCurrentCard, computerCurrentCard);
+                
+                // Display the cards
+                displayCard(playerCard, playerCurrentCard);
+                displayCard(computerCard, computerCurrentCard);
+                
+                // Update deck counts
+                updateDeckCounts();
+                
+                // Compare cards
+                compareCards();
+            }
+            
+            // Compare the flipped cards
+            function compareCards() {
+                if (playerCurrentCard.numericValue > computerCurrentCard.numericValue) {
+                    // Player wins
+                    gameStatus.textContent = 'Player wins this round!';
+                    setTimeout(() => {
+                        playerCards.push(...cardsInPlay);
+                        cardsInPlay = [];
+                        resetCardDisplay();
+                        updateDeckCounts();
+                        updateScores();
+                        checkGameEnd();
+                        gameStatus.textContent = 'Press SPACE to flip cards';
+                    }, 1500);
+                } else if (playerCurrentCard.numericValue < computerCurrentCard.numericValue) {
+                    // Computer wins
+                    gameStatus.textContent = 'Computer wins this round!';
+                    setTimeout(() => {
+                        computerCards.push(...cardsInPlay);
+                        cardsInPlay = [];
+                        resetCardDisplay();
+                        updateDeckCounts();
+                        updateScores();
+                        checkGameEnd();
+                        gameStatus.textContent = 'Press SPACE to flip cards';
+                    }, 1500);
+                } else {
+                    // War scenario
+                    startWarScenario();
+                }
+            }
+            
+            // Reset card display
+            function resetCardDisplay() {
+                playerCard.className = 'card-slot card-back';
+                computerCard.className = 'card-slot card-back';
+                playerCard.innerHTML = '';
+                computerCard.innerHTML = '';
+            }
+            
+            // Start war scenario
+            function startWarScenario() {
+                isWarScenario = true;
+                warAlert.style.display = 'block';
+                gameStatus.textContent = 'WAR! Get ready for the key challenge!';
+                
+                // Generate random key (not space)
+                const possibleKeys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789';
+                expectedKey = possibleKeys.charAt(Math.floor(Math.random() * possibleKeys.length));
+                
+                // Show key prompt after a short delay
+                setTimeout(() => {
+                    warAlert.style.display = 'none';
+                    keyPrompt.textContent = `Press: ${expectedKey}`;
+                    keyPrompt.style.display = 'block';
+                    timer.style.display = 'block';
+                    
+                    // Start timer
+                    timeLeft = 1;
+                    timer.textContent = timeLeft;
+                    
+                    timerInterval = setInterval(() => {
+                        timeLeft -= 0.1;
+                        if (timeLeft <= 0) {
+                            clearInterval(timerInterval);
+                            timerInterval = null;
+                            handleWarTimeout();
+                        } else {
+                            timer.textContent = Math.ceil(timeLeft);
+                        }
+                    }, 100);
+                }, 1000);
+            }
+            
+            // Handle war timeout (player didn't press key in time)
+            function handleWarTimeout() {
+                keyPrompt.style.display = 'none';
+                timer.style.display = 'none';
+                gameStatus.textContent = 'Too slow! Computer wins the war!';
+                
+                // Computer wins the war
+                setTimeout(() => {
+                    computerCards.push(...cardsInPlay);
+                    cardsInPlay = [];
+                    resetCardDisplay();
+                    updateDeckCounts();
+                    updateScores();
+                    checkGameEnd();
+                    isWarScenario = false;
+                    gameStatus.textContent = 'Press SPACE to flip cards';
+                }, 1500);
+            }
+            
+            // Handle key press during war
+            function handleWarKeyPress(key) {
+                if (!isWarScenario || !timerInterval) return;
+                
+                // Clear timer
+                clearInterval(timerInterval);
+                timerInterval = null;
+                
+                // Hide war elements
+                keyPrompt.style.display = 'none';
+                timer.style.display = 'none';
+                
+                if (key.toUpperCase() === expectedKey) {
+                    // Player wins the war
+                    gameStatus.textContent = 'Great job! You win the war!';
+                    setTimeout(() => {
+                        playerCards.push(...cardsInPlay);
+                        cardsInPlay = [];
+                        resetCardDisplay();
+                        updateDeckCounts();
+                        updateScores();
+                        checkGameEnd();
+                        isWarScenario = false;
+                        gameStatus.textContent = 'Press SPACE to flip cards';
+                    }, 1500);
+                } else {
+                    // Computer wins the war
+                    gameStatus.textContent = 'Wrong key! Computer wins the war!';
+                    setTimeout(() => {
+                        computerCards.push(...cardsInPlay);
+                        cardsInPlay = [];
+                        resetCardDisplay();
+                        updateDeckCounts();
+                        updateScores();
+                        checkGameEnd();
+                        isWarScenario = false;
+                        gameStatus.textContent = 'Press SPACE to flip cards';
+                    }, 1500);
+                }
+            }
+            
+            // Check if the game has ended
+            function checkGameEnd() {
+                if (playerCards.length === 0) {
+                    gameStatus.textContent = 'Game Over! Computer wins!';
+                    isGameActive = false;
+                } else if (computerCards.length === 0) {
+                    gameStatus.textContent = 'Game Over! Player wins!';
+                    isGameActive = false;
+                }
+            }
+            
+            // Event listeners
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space' && !isWarScenario) {
+                    e.preventDefault(); // Prevent page scrolling
+                    flipCards();
+                } else if (isWarScenario && e.key !== ' ') {
+                    handleWarKeyPress(e.key);
+                }
+            });
+            
+            newGameBtn.addEventListener('click', initGame);
+            
+            // Start the game
+            initGame();
+        });
+    </script>
+</body>
+</html>
