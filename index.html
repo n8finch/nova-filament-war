@@ -180,6 +180,38 @@
         .new-game-btn:hover {
             background-color: #45a049;
         }
+        .war-timer-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .war-timer-control label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .war-timer-control input {
+            width: 200px;
+        }
+        .trump-card {
+            background-size: cover;
+            background-position: center;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+        .trump-card .card-content {
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 8px;
+        }
+        .filament {
+            color: #ff6b00;
+        }
+        .nova {
+            color: #00b7ff;
+        }
     </style>
 </head>
 <body>
@@ -191,7 +223,10 @@
         
         <div class="game-board">
             <div class="computer-area">
-                <div class="score-display">Computer: <span id="computer-score">0</span></div>
+                <div class="score-display">
+                    <div>Filament: <span id="computer-score">0</span></div>
+                    <div>Trump Cards Captured: <span id="computer-trump-captured">0</span></div>
+                </div>
                 <div id="computer-deck" class="deck" data-count="26"></div>
                 <div id="computer-card" class="card-slot card-back"></div>
             </div>
@@ -201,10 +236,17 @@
                 <div id="key-prompt" class="key-prompt">Press: ?</div>
                 <div id="timer" class="timer">1</div>
                 <div id="game-status" class="game-status">Press SPACE to flip cards</div>
+                <div class="war-timer-control">
+                    <label for="war-duration">War Duration (seconds): <span id="duration-value">1</span></label>
+                    <input type="range" id="war-duration" min="1" max="5" value="1" step="1">
+                </div>
             </div>
             
             <div class="player-area">
-                <div class="score-display">Player: <span id="player-score">0</span></div>
+                <div class="score-display">
+                    <div>Nova: <span id="player-score">0</span></div>
+                    <div>Trump Cards Captured: <span id="player-trump-captured">0</span></div>
+                </div>
                 <div id="player-deck" class="deck" data-count="26"></div>
                 <div id="player-card" class="card-slot card-back"></div>
             </div>
@@ -216,8 +258,24 @@
             <h2>How to Play</h2>
             <p>1. Press the SPACE BAR to flip cards.</p>
             <p>2. Higher card wins the round and takes both cards.</p>
-            <p>3. If cards have the same value (WAR!), you'll need to press a random key (shown on screen) within 1 second to win.</p>
-            <p>4. The game ends when one player has all the cards.</p>
+            <p>3. Each player has 3 special trump cards:</p>
+            <ul>
+                <li>Filament (computer) has 3 Filament trump cards</li>
+                <li>Nova (player) has 3 Nova trump cards</li>
+                <li>Trump cards always win against regular cards</li>
+                <li>When a trump card wins, it captures the opponent's card</li>
+            </ul>
+            <p>4. If two trump cards are played against each other, or if cards have the same value (WAR!):</p>
+            <ul>
+                <li>You'll need to press a random key (shown on screen)</li>
+                <li>The time limit can be adjusted using the slider (1-5 seconds)</li>
+                <li>If you win a war with trump cards involved, you capture the opponent's trump card</li>
+            </ul>
+            <p>5. Win conditions:</p>
+            <ul>
+                <li>Capture all 3 of your opponent's trump cards, OR</li>
+                <li>Make your opponent run out of cards</li>
+            </ul>
         </div>
     </div>
 
@@ -230,10 +288,14 @@
             const computerCard = document.getElementById('computer-card');
             const playerScore = document.getElementById('player-score');
             const computerScore = document.getElementById('computer-score');
+            const playerTrumpCapturedDisplay = document.getElementById('player-trump-captured');
+            const computerTrumpCapturedDisplay = document.getElementById('computer-trump-captured');
             const gameStatus = document.getElementById('game-status');
             const warAlert = document.getElementById('war-alert');
             const keyPrompt = document.getElementById('key-prompt');
             const timer = document.getElementById('timer');
+            const warDurationSlider = document.getElementById('war-duration');
+            const durationValueDisplay = document.getElementById('duration-value');
             const newGameBtn = document.getElementById('new-game-btn');
             
             // Game state variables
@@ -248,6 +310,9 @@
             let timerInterval = null;
             let timeLeft = 0;
             let cardsInPlay = [];
+            let playerTrumpCaptured = 0;
+            let computerTrumpCaptured = 0;
+            let warScenarioDuration = 1; // Default duration in seconds
             
             // Card values and suits
             const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -275,6 +340,8 @@
                 isGameActive = true;
                 isWarScenario = false;
                 cardsInPlay = [];
+                playerTrumpCaptured = 0;
+                computerTrumpCaptured = 0;
                 
                 // Clear any existing timers
                 if (timerInterval) {
@@ -292,6 +359,8 @@
                 computerCard.className = 'card-slot card-back';
                 playerCard.innerHTML = '';
                 computerCard.innerHTML = '';
+                playerCard.style.backgroundImage = '';
+                computerCard.style.backgroundImage = '';
                 
                 // Create and shuffle deck
                 createDeck();
@@ -303,19 +372,46 @@
                 // Update UI
                 updateDeckCounts();
                 updateScores();
+                updateTrumpCardTallies();
                 gameStatus.textContent = 'Press SPACE to flip cards';
             }
             
-            // Create a standard deck of 52 cards
+            // Create a standard deck of 52 cards plus trump cards
             function createDeck() {
+                // Create regular cards
                 for (let suit of suits) {
                     for (let value of values) {
                         deck.push({
                             value: value,
                             suit: suit,
-                            numericValue: cardValues[value]
+                            numericValue: cardValues[value],
+                            isTrump: false
                         });
                     }
+                }
+                
+                // Create Filament trump cards (for computer)
+                for (let i = 0; i < 3; i++) {
+                    deck.push({
+                        value: 'T',
+                        suit: { name: 'filament', symbol: 'F', class: 'filament' },
+                        numericValue: 15, // Higher than Ace
+                        isTrump: true,
+                        trumpType: 'filament',
+                        imageUrl: 'images/filament.jpg'
+                    });
+                }
+                
+                // Create Nova trump cards (for player)
+                for (let i = 0; i < 3; i++) {
+                    deck.push({
+                        value: 'T',
+                        suit: { name: 'nova', symbol: 'N', class: 'nova' },
+                        numericValue: 15, // Higher than Ace
+                        isTrump: true,
+                        trumpType: 'nova',
+                        imageUrl: 'images/nova.jpg'
+                    });
                 }
             }
             
@@ -329,13 +425,38 @@
             
             // Deal cards to players
             function dealCards() {
-                for (let i = 0; i < deck.length; i++) {
+                // Create temporary arrays for regular cards
+                const regularCards = deck.filter(card => !card.isTrump);
+                
+                // Shuffle regular cards
+                for (let i = regularCards.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [regularCards[i], regularCards[j]] = [regularCards[j], regularCards[i]];
+                }
+                
+                // Deal regular cards evenly
+                for (let i = 0; i < regularCards.length; i++) {
                     if (i % 2 === 0) {
-                        playerCards.push(deck[i]);
+                        playerCards.push(regularCards[i]);
                     } else {
-                        computerCards.push(deck[i]);
+                        computerCards.push(regularCards[i]);
                     }
                 }
+                
+                // Add trump cards to appropriate players
+                for (let card of deck) {
+                    if (card.isTrump) {
+                        if (card.trumpType === 'nova') {
+                            playerCards.push(card);
+                        } else if (card.trumpType === 'filament') {
+                            computerCards.push(card);
+                        }
+                    }
+                }
+                
+                // Reset trump capture counters
+                playerTrumpCaptured = 0;
+                computerTrumpCaptured = 0;
             }
             
             // Update deck counts in UI
@@ -352,13 +473,27 @@
             
             // Display a card in the UI
             function displayCard(cardElement, card) {
-                cardElement.className = 'card-slot';
-                cardElement.innerHTML = `
-                    <div class="card-content">
-                        <div class="card-value ${card.suit.class}">${card.value}</div>
-                        <div class="card-suit ${card.suit.class}">${card.suit.symbol}</div>
-                    </div>
-                `;
+                if (card.isTrump) {
+                    // Display trump card with image
+                    cardElement.className = 'card-slot trump-card';
+                    cardElement.style.backgroundImage = `url('${card.imageUrl}')`;
+                    cardElement.innerHTML = `
+                        <div class="card-content">
+                            <div class="card-value ${card.suit.class}">TRUMP</div>
+                            <div class="card-suit ${card.suit.class}">${card.trumpType.toUpperCase()}</div>
+                        </div>
+                    `;
+                } else {
+                    // Display regular card
+                    cardElement.className = 'card-slot';
+                    cardElement.style.backgroundImage = '';
+                    cardElement.innerHTML = `
+                        <div class="card-content">
+                            <div class="card-value ${card.suit.class}">${card.value}</div>
+                            <div class="card-suit ${card.suit.class}">${card.suit.symbol}</div>
+                        </div>
+                    `;
+                }
             }
             
             // Flip cards for both players
@@ -387,9 +522,60 @@
             
             // Compare the flipped cards
             function compareCards() {
+                // Check for trump cards
+                const playerHasTrump = playerCurrentCard.isTrump;
+                const computerHasTrump = computerCurrentCard.isTrump;
+                
+                // Both players have trump cards
+                if (playerHasTrump && computerHasTrump) {
+                    // War scenario between trump cards
+                    gameStatus.textContent = 'Trump vs Trump! WAR!';
+                    startWarScenario();
+                    return;
+                }
+                
+                // Only player has trump card
+                if (playerHasTrump && !computerHasTrump) {
+                    // Player's trump card captures computer's card
+                    gameStatus.textContent = 'Nova trump card wins!';
+                    setTimeout(() => {
+                        // Process any trump cards before adding cards to player's deck
+                        processCapturedTrumpCards('player');
+                        
+                        playerCards.push(...cardsInPlay);
+                        cardsInPlay = [];
+                        resetCardDisplay();
+                        updateDeckCounts();
+                        updateScores();
+                        checkGameEnd();
+                        gameStatus.textContent = 'Press SPACE to flip cards';
+                    }, 1500);
+                    return;
+                }
+                
+                // Only computer has trump card
+                if (!playerHasTrump && computerHasTrump) {
+                    // Computer's trump card captures player's card
+                    gameStatus.textContent = 'Filament trump card wins!';
+                    setTimeout(() => {
+                        // Process any trump cards before adding cards to computer's deck
+                        processCapturedTrumpCards('computer');
+                        
+                        computerCards.push(...cardsInPlay);
+                        cardsInPlay = [];
+                        resetCardDisplay();
+                        updateDeckCounts();
+                        updateScores();
+                        checkGameEnd();
+                        gameStatus.textContent = 'Press SPACE to flip cards';
+                    }, 1500);
+                    return;
+                }
+                
+                // Regular card comparison (no trump cards)
                 if (playerCurrentCard.numericValue > computerCurrentCard.numericValue) {
                     // Player wins
-                    gameStatus.textContent = 'Player wins this round!';
+                    gameStatus.textContent = 'Nova wins this round!';
                     setTimeout(() => {
                         playerCards.push(...cardsInPlay);
                         cardsInPlay = [];
@@ -401,7 +587,7 @@
                     }, 1500);
                 } else if (playerCurrentCard.numericValue < computerCurrentCard.numericValue) {
                     // Computer wins
-                    gameStatus.textContent = 'Computer wins this round!';
+                    gameStatus.textContent = 'Filament wins this round!';
                     setTimeout(() => {
                         computerCards.push(...cardsInPlay);
                         cardsInPlay = [];
@@ -442,8 +628,8 @@
                     keyPrompt.style.display = 'block';
                     timer.style.display = 'block';
                     
-                    // Start timer
-                    timeLeft = 1;
+                    // Start timer with the selected duration
+                    timeLeft = warScenarioDuration;
                     timer.textContent = timeLeft;
                     
                     timerInterval = setInterval(() => {
@@ -459,14 +645,46 @@
                 }, 1000);
             }
             
+            // Process captured trump cards
+            function processCapturedTrumpCards(winner) {
+                // Check for trump cards in play
+                const trumpCardsInPlay = cardsInPlay.filter(card => card.isTrump);
+                
+                if (trumpCardsInPlay.length > 0) {
+                    // Process each trump card
+                    for (let trumpCard of trumpCardsInPlay) {
+                        // If the trump card belongs to the opponent, remove it and count as captured
+                        if (winner === 'player' && trumpCard.trumpType === 'filament') {
+                            // Player captured a Filament trump card
+                            playerTrumpCaptured++;
+                            // Remove the trump card from play
+                            cardsInPlay = cardsInPlay.filter(card => 
+                                !(card.isTrump && card.trumpType === 'filament'));
+                        } else if (winner === 'computer' && trumpCard.trumpType === 'nova') {
+                            // Computer captured a Nova trump card
+                            computerTrumpCaptured++;
+                            // Remove the trump card from play
+                            cardsInPlay = cardsInPlay.filter(card => 
+                                !(card.isTrump && card.trumpType === 'nova'));
+                        }
+                    }
+                    
+                    // Update the trump card tallies display
+                    updateTrumpCardTallies();
+                }
+            }
+            
             // Handle war timeout (player didn't press key in time)
             function handleWarTimeout() {
                 keyPrompt.style.display = 'none';
                 timer.style.display = 'none';
-                gameStatus.textContent = 'Too slow! Computer wins the war!';
+                gameStatus.textContent = 'Too slow! Filament wins 🏆 the war!';
                 
                 // Computer wins the war
                 setTimeout(() => {
+                    // Process any trump cards before adding cards to computer's deck
+                    processCapturedTrumpCards('computer');
+                    
                     computerCards.push(...cardsInPlay);
                     cardsInPlay = [];
                     resetCardDisplay();
@@ -492,8 +710,11 @@
                 
                 if (key.toUpperCase() === expectedKey) {
                     // Player wins the war
-                    gameStatus.textContent = 'Great job! You win the war!';
+                    gameStatus.textContent = 'Great job! Nova wins 🏆 the war!';
                     setTimeout(() => {
+                        // Process any trump cards before adding cards to player's deck
+                        processCapturedTrumpCards('player');
+                        
                         playerCards.push(...cardsInPlay);
                         cardsInPlay = [];
                         resetCardDisplay();
@@ -505,8 +726,11 @@
                     }, 1500);
                 } else {
                     // Computer wins the war
-                    gameStatus.textContent = 'Wrong key! Computer wins the war!';
+                    gameStatus.textContent = 'Wrong key! Filament wins 🏆 the war!';
                     setTimeout(() => {
+                        // Process any trump cards before adding cards to computer's deck
+                        processCapturedTrumpCards('computer');
+                        
                         computerCards.push(...cardsInPlay);
                         cardsInPlay = [];
                         resetCardDisplay();
@@ -521,13 +745,33 @@
             
             // Check if the game has ended
             function checkGameEnd() {
+                // Win by depleting opponent's deck
                 if (playerCards.length === 0) {
-                    gameStatus.textContent = 'Game Over! Computer wins!';
+                    gameStatus.textContent = 'Game Over! Filament wins 🏆 by depleting Nova\'s deck!';
                     isGameActive = false;
+                    return;
                 } else if (computerCards.length === 0) {
-                    gameStatus.textContent = 'Game Over! Player wins!';
+                    gameStatus.textContent = 'Game Over! Nova wins 🏆 by depleting Filament\'s deck!';
                     isGameActive = false;
+                    return;
                 }
+                
+                // Win by capturing all trump cards (3 cards)
+                if (playerTrumpCaptured === 3) {
+                    gameStatus.textContent = 'Game Over! Nova wins 🏆 by capturing all Filament trump cards!';
+                    isGameActive = false;
+                    return;
+                } else if (computerTrumpCaptured === 3) {
+                    gameStatus.textContent = 'Game Over! Filament wins 🏆 by capturing all Nova trump cards!';
+                    isGameActive = false;
+                    return;
+                }
+            }
+            
+            // Update trump card tallies display
+            function updateTrumpCardTallies() {
+                playerTrumpCapturedDisplay.textContent = playerTrumpCaptured;
+                computerTrumpCapturedDisplay.textContent = computerTrumpCaptured;
             }
             
             // Event listeners
@@ -538,6 +782,12 @@
                 } else if (isWarScenario && e.key !== ' ') {
                     handleWarKeyPress(e.key);
                 }
+            });
+            
+            // War duration slider event listener
+            warDurationSlider.addEventListener('input', function() {
+                warScenarioDuration = parseInt(this.value);
+                durationValueDisplay.textContent = warScenarioDuration;
             });
             
             newGameBtn.addEventListener('click', initGame);
